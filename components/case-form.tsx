@@ -381,7 +381,9 @@ export function CaseForm({
       return false
     }
 
-    toast.success(mode === "edit" ? "Fall aktualisiert" : "Fall erfasst")
+    if (mode === "edit") {
+      toast.success("Fall aktualisiert")
+    }
     onSaved?.(values)
     return true
   }
