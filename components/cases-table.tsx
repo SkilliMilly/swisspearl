@@ -317,10 +317,12 @@ export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className={cn(
-                "cursor-pointer border-l-4 border-l-transparent",
-                row.original.readAt == null && "border-l-orange-500"
-              )}
+              className={cn("cursor-pointer")}
+              style={
+                row.original.readAt == null
+                  ? { boxShadow: "inset 4px 0 0 0 #f97316" }
+                  : undefined
+              }
               onClick={() => {
                 if (row.original.readAt == null) {
                   void markRead(row.original.id)
