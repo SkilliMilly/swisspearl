@@ -17,7 +17,7 @@ export async function GET() {
   const rows = (await db`
     SELECT id, name
     FROM departments
-    ORDER BY name ASC
+    ORDER BY CASE WHEN name = 'PV Bearbeitung' THEN 0 ELSE 1 END, name ASC
   `) as Array<{ id: number; name: string }>
 
   return Response.json({ rows })

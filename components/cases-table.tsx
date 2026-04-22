@@ -13,6 +13,16 @@ import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { CaseForm } from "@/components/case-form"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -91,6 +101,7 @@ export function CasesTable() {
   const [loading, setLoading] = React.useState(true)
   const [selected, setSelected] = React.useState<CaseRow | null>(null)
   const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteTarget, setDeleteTarget] = React.useState<CaseRow | null>(null)
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ])
@@ -114,9 +125,46 @@ export function CasesTable() {
     setRows(json.rows ?? [])
   }, [])
 
+  const deleteCase = React.useCallback(
+    async (caseId: number) => {
+      const res = await fetch(`/api/cases/${caseId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as
+          | { error?: string; message?: string }
+          | null
+        toast.error(json?.message ?? json?.error ?? "Fall konnte nicht gelöscht werden.")
+        return false
+      }
+
+      toast.success("Fall gelöscht")
+      await load()
+      return true
+    },
+    [load]
+  )
+
   const table = useReactTable({
     data: rows,
-    columns,
+    columns: [
+      ...columns,
+      {
+        id: "actions",
+        header: "Aktion",
+        cell: ({ row }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              setDeleteTarget(row.original)
+            }}
+          >
+            Löschen
+          </Button>
+        ),
+      },
+    ],
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -221,34 +269,80 @@ export function CasesTable() {
             </DialogDescription>
           </DialogHeader>
           {selected ? (
-            <CaseForm
-              mode="edit"
-              caseId={selected.id}
-              submitLabel="Speichern"
-              initialValues={{
-                maschine: selected.maschine,
-                auswahl: selected.auswahl,
-                stueckzahl:
-                  selected.auswahl === "Ausschuss"
-                    ? selected.stueckzahl ?? 1
-                    : undefined,
-                errorCodeId: selected.errorCodeId ?? null,
-                fauf: selected.fauf,
-                kundenauftrag: selected.kundenauftrag,
-                materialNr: selected.materialNr,
-                format: selected.format,
-                kommentar: selected.kommentar ?? "",
-                erfasser: selected.erfasser,
-              }}
-              onCancel={() => setEditOpen(false)}
-              onSaved={async () => {
-                await load()
-                setEditOpen(false)
-              }}
-            />
+            <div className="grid gap-4">
+              <CaseForm
+                mode="edit"
+                caseId={selected.id}
+                submitLabel="Speichern"
+                initialValues={{
+                  maschine: selected.maschine,
+                  auswahl: selected.auswahl,
+                  stueckzahl:
+                    selected.auswahl === "Ausschuss"
+                      ? selected.stueckzahl ?? 1
+                      : undefined,
+                  errorCodeId: selected.errorCodeId ?? null,
+                  fauf: selected.fauf,
+                  kundenauftrag: selected.kundenauftrag,
+                  materialNr: selected.materialNr,
+                  format: selected.format,
+                  kommentar: selected.kommentar ?? "",
+                  erfasser: selected.erfasser,
+                }}
+                onCancel={() => setEditOpen(false)}
+                onSaved={async () => {
+                  await load()
+                  setEditOpen(false)
+                }}
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDeleteTarget(selected)}
+                >
+                  Löschen
+                </Button>
+              </div>
+            </div>
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fall löschen</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `Soll der Fall ${deleteTarget.fauf} / ${deleteTarget.kundenauftrag} wirklich gelöscht werden?`
+                : "Soll dieser Fall wirklich gelöscht werden?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault()
+                if (!deleteTarget) return
+                const ok = await deleteCase(deleteTarget.id)
+                if (ok) {
+                  setDeleteTarget(null)
+                  setEditOpen(false)
+                  setSelected(null)
+                }
+              }}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

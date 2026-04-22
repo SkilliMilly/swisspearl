@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       FROM error_codes ec
       INNER JOIN departments d ON d.id = ec.department_id
       WHERE ec.department_id = ${departmentId}
-      ORDER BY d.name ASC, ec.code ASC
+      ORDER BY CASE WHEN d.name = 'PV Bearbeitung' THEN 0 ELSE 1 END, d.name ASC, ec.code ASC
     `
     : await db`
       SELECT
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
         ec.title
       FROM error_codes ec
       INNER JOIN departments d ON d.id = ec.department_id
-      ORDER BY d.name ASC, ec.code ASC
+      ORDER BY CASE WHEN d.name = 'PV Bearbeitung' THEN 0 ELSE 1 END, d.name ASC, ec.code ASC
     `) as Array<{
     id: number
     departmentId: number

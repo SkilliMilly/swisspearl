@@ -113,6 +113,11 @@ export default function FehlercodesPage() {
     return errorCodes.filter((row) => String(row.departmentId) === departmentFilter)
   }, [departmentFilter, errorCodes])
 
+  const defaultDepartmentId = React.useMemo(() => {
+    if (departmentFilter !== "all") return departmentFilter
+    return departments[0] ? String(departments[0].id) : ""
+  }, [departmentFilter, departments])
+
   async function saveDepartment() {
     const body = { name: departmentForm.name.trim() }
     const res =
@@ -259,7 +264,10 @@ export default function FehlercodesPage() {
               onClick={() => {
                 setErrorCodeMode("create")
                 setErrorCodeId(null)
-                setErrorCodeForm(emptyErrorCodeForm())
+                setErrorCodeForm({
+                  ...emptyErrorCodeForm(),
+                  departmentId: defaultDepartmentId,
+                })
                 setErrorCodeDialogOpen(true)
               }}
             >
