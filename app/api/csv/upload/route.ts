@@ -43,33 +43,35 @@ export async function POST(request: Request) {
 
   const rows = parsed.data ?? []
 
-  const db = getDb()
-  const insert = db.prepare(
-    `INSERT INTO csv_catalog (fauf, kundenauftrag, material_nr, format) VALUES (?, ?, ?, ?)`
-  )
-  const clear = db.prepare(`DELETE FROM csv_catalog`)
+  const db = await getDb()
 
-  let inserted = 0
-
-  const tx = db.transaction(() => {
-    clear.run()
-
-    for (const row of rows) {
+  const validRows = rows
+    .map((row) => {
       const fauf = normalizeKey(row["FAUF"])
       const kundenauftrag = normalizeKey(row["Kunden Auftrag"])
       const materialNr = normalizeKey(row["Artikelnr."])
       const format = normalizeKey(row["Farbe"])
 
       if (!fauf || !kundenauftrag || !materialNr || !format) {
-        continue
+        return null
       }
 
-      insert.run(fauf, kundenauftrag, materialNr, format)
-      inserted += 1
-    }
-  })
+      return { fauf, kundenauftrag, materialNr, format }
+    })
+    .filter((row): row is NonNullable<typeof row> => row != null)
 
-  tx()
+  await db.transaction([
+    db`TRUNCATE csv_catalog`,
+    ...validRows.map(
+      (row) =>
+        db`
+          INSERT INTO csv_catalog (fauf, kundenauftrag, material_nr, format)
+          VALUES (${row.fauf}, ${row.kundenauftrag}, ${row.materialNr}, ${row.format})
+        `
+    ),
+  ])
+
+  const inserted = validRows.length
 
   if (inserted === 0) {
     return Response.json(

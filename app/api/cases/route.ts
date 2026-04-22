@@ -18,28 +18,36 @@ const bodySchema = z.object({
 
 export async function GET() {
   try {
-    const db = getDb()
-    const rows = db
-      .prepare(
-        `
-        SELECT
-          id,
-          created_at as createdAt,
-          maschine,
-          auswahl,
-          stueckzahl as stueckzahl,
-          fauf,
-          kundenauftrag,
-          material_nr as materialNr,
-          format,
-          kommentar,
-          erfasser
-        FROM cases
-        ORDER BY datetime(created_at) DESC
-        LIMIT 500
-      `
-      )
-      .all()
+    const db = await getDb()
+    const rows = (await db`
+      SELECT
+        id,
+        created_at AS "createdAt",
+        maschine,
+        auswahl,
+        stueckzahl,
+        fauf,
+        kundenauftrag,
+        material_nr AS "materialNr",
+        format,
+        kommentar,
+        erfasser
+      FROM cases
+      ORDER BY created_at DESC
+      LIMIT 500
+    `) as Array<{
+      id: number
+      createdAt: string
+      maschine: string
+      auswahl: "Ausschuss" | "Q-Problem"
+      stueckzahl: number | null
+      fauf: string
+      kundenauftrag: string
+      materialNr: string
+      format: string
+      kommentar: string | null
+      erfasser: string
+    }>
 
     return Response.json({ rows })
   } catch (err) {
@@ -62,14 +70,13 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data
-    const db = getDb()
     const createdAt = new Date().toISOString()
 
     const stueckzahl =
       data.auswahl === "Ausschuss" ? (data.stueckzahl ?? 1) : null
 
-    const stmt = db.prepare(
-      `
+    const db = await getDb()
+    const rows = (await db`
       INSERT INTO cases (
         created_at,
         maschine,
@@ -81,24 +88,24 @@ export async function POST(request: Request) {
         format,
         kommentar,
         erfasser
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `
-    )
+      ) VALUES (
+        ${createdAt},
+        ${data.maschine},
+        ${data.auswahl},
+        ${stueckzahl},
+        ${data.fauf},
+        ${data.kundenauftrag},
+        ${data.materialNr},
+        ${data.format},
+        ${data.kommentar ?? null},
+        ${data.erfasser}
+      )
+      RETURNING id, created_at AS "createdAt"
+    `) as Array<{ id: number; createdAt: string }>
 
-    const info = stmt.run(
-      createdAt,
-      data.maschine,
-      data.auswahl,
-      stueckzahl,
-      data.fauf,
-      data.kundenauftrag,
-      data.materialNr,
-      data.format,
-      data.kommentar ?? null,
-      data.erfasser
-    )
+    const row = rows[0]
 
-    return Response.json({ id: info.lastInsertRowid, createdAt })
+    return Response.json({ id: row?.id, createdAt: row?.createdAt ?? createdAt })
   } catch (err) {
     return Response.json(
       {

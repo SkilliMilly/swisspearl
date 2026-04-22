@@ -34,42 +34,27 @@ export async function PUT(
     }
 
     const data = parsed.data
-    const db = getDb()
-
     const stueckzahl =
       data.auswahl === "Ausschuss" ? (data.stueckzahl ?? 1) : null
 
-    const stmt = db.prepare(
-      `
+    const db = await getDb()
+    const rows = (await db`
       UPDATE cases
       SET
-        maschine = ?,
-        auswahl = ?,
-        stueckzahl = ?,
-        fauf = ?,
-        kundenauftrag = ?,
-        material_nr = ?,
-        format = ?,
-        kommentar = ?,
-        erfasser = ?
-      WHERE id = ?
-    `
-    )
+        maschine = ${data.maschine},
+        auswahl = ${data.auswahl},
+        stueckzahl = ${stueckzahl},
+        fauf = ${data.fauf},
+        kundenauftrag = ${data.kundenauftrag},
+        material_nr = ${data.materialNr},
+        format = ${data.format},
+        kommentar = ${data.kommentar ?? null},
+        erfasser = ${data.erfasser}
+      WHERE id = ${caseId}
+      RETURNING id
+    `) as Array<{ id: number }>
 
-    const info = stmt.run(
-      data.maschine,
-      data.auswahl,
-      stueckzahl,
-      data.fauf,
-      data.kundenauftrag,
-      data.materialNr,
-      data.format,
-      data.kommentar ?? null,
-      data.erfasser,
-      caseId
-    )
-
-    if (info.changes === 0) {
+    if (rows.length === 0) {
       return Response.json({ error: "Not found" }, { status: 404 })
     }
 

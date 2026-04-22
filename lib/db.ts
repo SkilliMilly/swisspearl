@@ -1,54 +1,65 @@
-import fs from "node:fs"
-import path from "node:path"
-import Database from "better-sqlite3"
+import { neon } from "@neondatabase/serverless"
 
-type Db = Database.Database
+type Db = ReturnType<typeof neon>
 
 declare global {
   // eslint-disable-next-line no-var
-  var __swisspearlDb: Db | undefined
+  var __swisspearlSchemaReady: Promise<void> | undefined
 }
 
-function initDb(db: Db) {
-  db.pragma("journal_mode = WAL")
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS csv_catalog (
-      fauf TEXT NOT NULL,
-      kundenauftrag TEXT NOT NULL,
-      material_nr TEXT NOT NULL,
-      format TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_csv_catalog_fauf ON csv_catalog (fauf);
-    CREATE INDEX IF NOT EXISTS idx_csv_catalog_kundenauftrag ON csv_catalog (kundenauftrag);
-    CREATE INDEX IF NOT EXISTS idx_csv_catalog_material ON csv_catalog (material_nr);
-
-    CREATE TABLE IF NOT EXISTS cases (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      created_at TEXT NOT NULL,
-      maschine TEXT NOT NULL,
-      auswahl TEXT NOT NULL,
-      stueckzahl INTEGER,
-      fauf TEXT NOT NULL,
-      kundenauftrag TEXT NOT NULL,
-      material_nr TEXT NOT NULL,
-      format TEXT NOT NULL,
-      kommentar TEXT,
-      erfasser TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases (created_at);
-    CREATE INDEX IF NOT EXISTS idx_cases_fauf ON cases (fauf);
-    CREATE INDEX IF NOT EXISTS idx_cases_kundenauftrag ON cases (kundenauftrag);
-  `)
+function getConnectionString() {
+  const url = process.env.POSTGRES_URL ?? process.env.DATABASE_URL
+  if (!url) {
+    throw new Error("Missing Postgres connection string. Set POSTGRES_URL or DATABASE_URL.")
+  }
+  return url
 }
 
-export function getDb() {
-  if (global.__swisspearlDb) return global.__swisspearlDb
+const db = neon(getConnectionString()) as Db
 
-  const dbPath = path.join(process.cwd(), "data", "app.db")
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true })
+function ensureSchema() {
+  if (!global.__swisspearlSchemaReady) {
+    global.__swisspearlSchemaReady = (async () => {
+      await db`
+        CREATE TABLE IF NOT EXISTS csv_catalog (
+          fauf TEXT NOT NULL,
+          kundenauftrag TEXT NOT NULL,
+          material_nr TEXT NOT NULL,
+          format TEXT NOT NULL
+        )
+      `
+      await db`CREATE INDEX IF NOT EXISTS idx_csv_catalog_fauf ON csv_catalog (fauf)`
+      await db`CREATE INDEX IF NOT EXISTS idx_csv_catalog_kundenauftrag ON csv_catalog (kundenauftrag)`
+      await db`CREATE INDEX IF NOT EXISTS idx_csv_catalog_material ON csv_catalog (material_nr)`
 
-  const db = new Database(dbPath)
-  initDb(db)
-  global.__swisspearlDb = db
+      await db`
+        CREATE TABLE IF NOT EXISTS cases (
+          id SERIAL PRIMARY KEY,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          maschine TEXT NOT NULL,
+          auswahl TEXT NOT NULL,
+          stueckzahl INTEGER,
+          fauf TEXT NOT NULL,
+          kundenauftrag TEXT NOT NULL,
+          material_nr TEXT NOT NULL,
+          format TEXT NOT NULL,
+          kommentar TEXT,
+          erfasser TEXT NOT NULL
+        )
+      `
+      await db`CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases (created_at)`
+      await db`CREATE INDEX IF NOT EXISTS idx_cases_fauf ON cases (fauf)`
+      await db`CREATE INDEX IF NOT EXISTS idx_cases_kundenauftrag ON cases (kundenauftrag)`
+    })().catch((error) => {
+      global.__swisspearlSchemaReady = undefined
+      throw error
+    })
+  }
+
+  return global.__swisspearlSchemaReady
+}
+
+export async function getDb() {
+  await ensureSchema()
   return db
 }

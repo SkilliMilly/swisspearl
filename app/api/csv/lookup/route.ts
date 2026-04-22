@@ -14,21 +14,29 @@ export async function GET(request: Request) {
     )
   }
 
-  const db = getDb()
+  const db = await getDb()
 
   if (fauf) {
-    const rows = db
-      .prepare(
-        "SELECT fauf, kundenauftrag, material_nr as materialNr, format FROM csv_catalog WHERE fauf = ?"
-      )
-      .all(fauf)
+    const rows = await db`
+      SELECT
+        fauf,
+        kundenauftrag,
+        material_nr AS "materialNr",
+        format
+      FROM csv_catalog
+      WHERE fauf = ${fauf}
+    `
     return Response.json({ rows })
   }
 
-  const rows = db
-    .prepare(
-      "SELECT fauf, kundenauftrag, material_nr as materialNr, format FROM csv_catalog WHERE kundenauftrag = ?"
-    )
-    .all(kundenauftrag)
+  const rows = await db`
+    SELECT
+      fauf,
+      kundenauftrag,
+      material_nr AS "materialNr",
+      format
+    FROM csv_catalog
+    WHERE kundenauftrag = ${kundenauftrag}
+  `
   return Response.json({ rows })
 }
