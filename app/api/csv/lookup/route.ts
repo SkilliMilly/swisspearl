@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const rows = await db`
       SELECT
         fauf,
-        kundenauftrag,
+        split_part(kundenauftrag, '.', 1) AS "kundenauftrag",
         material_nr AS "materialNr",
         format
       FROM csv_catalog
@@ -32,11 +32,11 @@ export async function GET(request: Request) {
   const rows = await db`
     SELECT
       fauf,
-      kundenauftrag,
+      split_part(kundenauftrag, '.', 1) AS "kundenauftrag",
       material_nr AS "materialNr",
       format
     FROM csv_catalog
-    WHERE kundenauftrag = ${kundenauftrag}
+    WHERE split_part(kundenauftrag, '.', 1) = ${kundenauftrag}
   `
   return Response.json({ rows })
 }
