@@ -80,6 +80,7 @@ function ensureSchema() {
         CREATE TABLE IF NOT EXISTS cases (
           id SERIAL PRIMARY KEY,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          read_at TIMESTAMPTZ,
           maschine TEXT NOT NULL,
           auswahl TEXT NOT NULL,
           stueckzahl INTEGER,
@@ -91,10 +92,12 @@ function ensureSchema() {
           erfasser TEXT NOT NULL
         )
       `
+      await db`ALTER TABLE cases ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ`
       await db`ALTER TABLE cases ADD COLUMN IF NOT EXISTS error_code_id INTEGER`
       await db`CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases (created_at)`
       await db`CREATE INDEX IF NOT EXISTS idx_cases_fauf ON cases (fauf)`
       await db`CREATE INDEX IF NOT EXISTS idx_cases_kundenauftrag ON cases (kundenauftrag)`
+      await db`CREATE INDEX IF NOT EXISTS idx_cases_read_at ON cases (read_at)`
 
       await db`
         CREATE TABLE IF NOT EXISTS departments (

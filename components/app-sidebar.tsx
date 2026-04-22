@@ -8,6 +8,7 @@ import {
   LayoutDashboardIcon,
   LogInIcon,
   LogOutIcon,
+  BellIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,11 @@ const NAV_ITEMS = [
     href: "/fall-erfassen",
     label: "Fall Erfassen",
     Icon: ClipboardPlusIcon,
+  },
+  {
+    href: "/notifications",
+    label: "Benachrichtigungen",
+    Icon: BellIcon,
   },
   {
     href: "/uebersicht",

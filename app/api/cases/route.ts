@@ -32,6 +32,7 @@ export async function GET() {
       SELECT
         c.id,
         c.created_at AS "createdAt",
+        c.read_at AS "readAt",
         c.maschine,
         c.auswahl,
         c.stueckzahl,
@@ -52,11 +53,12 @@ export async function GET() {
       FROM cases c
       LEFT JOIN error_codes ec ON ec.id = c.error_code_id
       LEFT JOIN departments d ON d.id = ec.department_id
-      ORDER BY c.created_at DESC
+      ORDER BY c.read_at IS NULL DESC, c.created_at DESC
       LIMIT 500
     `) as Array<{
       id: number
       createdAt: string
+      readAt: string | null
       maschine: string
       auswahl: "Ausschuss" | "Q-Problem"
       stueckzahl: number | null

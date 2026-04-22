@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { ADMIN_COOKIE, isAdminCookieValue } from "@/lib/auth"
 
-const PROTECTED_PATHS = ["/uebersicht", "/fehlercodes"]
+const PROTECTED_PATHS = ["/notifications", "/uebersicht", "/fehlercodes"]
 
 function isProtectedApi(pathname: string, method: string) {
   if (pathname === "/api/departments") return method !== "GET"
@@ -11,6 +11,7 @@ function isProtectedApi(pathname: string, method: string) {
   if (pathname.startsWith("/api/error-codes/")) return true
   if (pathname === "/api/csv/upload") return true
   if (pathname === "/api/cases" && method !== "POST") return true
+  if (pathname.startsWith("/api/cases/") && pathname.endsWith("/read")) return true
   if (pathname.startsWith("/api/cases/") && method !== "POST") return true
   return false
 }

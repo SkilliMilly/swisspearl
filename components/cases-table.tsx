@@ -9,7 +9,12 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
-import { ArrowDownIcon, ArrowUpIcon, Trash2Icon } from "lucide-react"
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  Trash2Icon,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { CaseForm } from "@/components/case-form"
@@ -39,10 +44,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 
 type CaseRow = {
   id: number
   createdAt: string
+  readAt: string | null
   maschine: string
   auswahl: "Ausschuss" | "Q-Problem"
   stueckzahl: number | null
@@ -96,7 +103,7 @@ const columns: ColumnDef<CaseRow>[] = [
   { accessorKey: "erfasser", header: "Erfasser" },
 ]
 
-export function CasesTable() {
+export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
   const [rows, setRows] = React.useState<CaseRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [selected, setSelected] = React.useState<CaseRow | null>(null)
@@ -125,6 +132,31 @@ export function CasesTable() {
     setRows(json.rows ?? [])
   }, [])
 
+  const displayedRows = React.useMemo(
+    () => (unreadOnly ? rows.filter((row) => row.readAt == null) : rows),
+    [rows, unreadOnly]
+  )
+
+  const markRead = React.useCallback(async (caseId: number) => {
+    const res = await fetch(`/api/cases/${caseId}/read`, { method: "POST" })
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as
+        | { error?: string; message?: string }
+        | null
+      toast.error(
+        json?.message ?? json?.error ?? "Fall konnte nicht als gelesen markiert werden."
+      )
+      return false
+    }
+
+    setRows((current) =>
+      current.map((row) =>
+        row.id === caseId ? { ...row, readAt: row.readAt ?? new Date().toISOString() } : row
+      )
+    )
+    return true
+  }, [])
+
   const deleteCase = React.useCallback(
     async (caseId: number) => {
       const res = await fetch(`/api/cases/${caseId}`, { method: "DELETE" })
@@ -144,25 +176,42 @@ export function CasesTable() {
   )
 
   const table = useReactTable({
-    data: rows,
+    data: displayedRows,
     columns: [
       ...columns,
       {
         id: "actions",
         header: "Aktion",
         cell: ({ row }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Fall löschen"
-            onClick={(e) => {
-              e.stopPropagation()
-              setDeleteTarget(row.original)
-            }}
-          >
-            <Trash2Icon />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Fall als gelesen markieren"
+              disabled={row.original.readAt != null}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (row.original.readAt == null) {
+                  void markRead(row.original.id)
+                }
+              }}
+            >
+              <CheckIcon />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Fall löschen"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeleteTarget(row.original)
+              }}
+            >
+              <Trash2Icon />
+            </Button>
+          </div>
         ),
       },
     ],
@@ -187,9 +236,11 @@ export function CasesTable() {
     }
   }, [])
 
-  if (!loading && rows.length === 0) {
+  if (!loading && displayedRows.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">Noch keine Fälle erfasst.</p>
+      <p className="text-sm text-muted-foreground">
+        {unreadOnly ? "Keine ungelesenen Fälle." : "Noch keine Fälle erfasst."}
+      </p>
     )
   }
 
@@ -239,8 +290,14 @@ export function CasesTable() {
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="cursor-pointer"
+              className={cn(
+                "cursor-pointer border-l-4 border-l-transparent",
+                row.original.readAt == null && "border-l-orange-500 bg-orange-50/60"
+              )}
               onClick={() => {
+                if (row.original.readAt == null) {
+                  void markRead(row.original.id)
+                }
                 setSelected(row.original)
                 setEditOpen(true)
               }}
