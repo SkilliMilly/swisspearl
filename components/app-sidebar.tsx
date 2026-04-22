@@ -2,7 +2,11 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { AlertTriangleIcon, ClipboardPlusIcon, LayoutDashboardIcon } from "lucide-react"
+import {
+  AlertTriangleIcon,
+  ClipboardPlusIcon,
+  LayoutDashboardIcon,
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -31,14 +35,18 @@ const NAV_ITEMS = [
   },
 ] as const
 
-export function AppSidebar() {
+export function AppSidebar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname()
+  const navItems = NAV_ITEMS.filter(({ href }) => {
+    if (href === "/fall-erfassen") return true
+    return isAdmin
+  })
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarMenu>
-          {NAV_ITEMS.map(({ href, label, Icon }) => (
+          {navItems.map(({ href, label, Icon }) => (
             <SidebarMenuItem key={href}>
               <SidebarMenuButton
                 asChild

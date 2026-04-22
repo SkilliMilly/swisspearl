@@ -21,7 +21,7 @@ function ShellFrame({
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar isAdmin={isAdmin} />
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
           <div className="flex h-14 items-center justify-between gap-2 border-b px-4">

@@ -1,12 +1,15 @@
-import { Geist, Geist_Mono, Figtree } from "next/font/google"
+import { Geist_Mono, Bricolage_Grotesque } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'})
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -22,7 +25,7 @@ export default function RootLayout({
     <html
       lang="de"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", figtree.variable)}
+      className={cn("antialiased", fontMono.variable, "font-sans", bricolage.variable)}
     >
       <body>
         <ThemeProvider>
