@@ -61,11 +61,6 @@ function ShellFrame({
                     </TooltipContent>
                   </Tooltip>
 
-                  <form action="/api/auth/logout" method="post">
-                    <Button type="submit" variant="outline">
-                      Logout
-                    </Button>
-                  </form>
                 </>
               ) : null}
             </div>

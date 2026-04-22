@@ -6,8 +6,11 @@ import {
   AlertTriangleIcon,
   ClipboardPlusIcon,
   LayoutDashboardIcon,
+  LogInIcon,
+  LogOutIcon,
 } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -44,7 +47,7 @@ export function AppSidebar({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent>
+      <SidebarContent className="justify-between">
         <SidebarMenu>
           {navItems.map(({ href, label, Icon }) => (
             <SidebarMenuItem key={href}>
@@ -61,6 +64,27 @@ export function AppSidebar({ isAdmin }: { isAdmin: boolean }) {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+        <div className="mt-auto p-2">
+          {isAdmin ? (
+            <form action="/api/auth/logout" method="post">
+              <Button type="submit" variant="outline" className="w-full justify-start gap-2">
+                <LogOutIcon />
+                <span>Logout</span>
+              </Button>
+            </form>
+          ) : (
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start gap-2"
+            >
+              <Link href="/login">
+                <LogInIcon />
+                <span>Login</span>
+              </Link>
+            </Button>
+          )}
+        </div>
       </SidebarContent>
       <SidebarRail />
     </Sidebar>
