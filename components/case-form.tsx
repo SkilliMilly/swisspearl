@@ -149,6 +149,7 @@ export function CaseForm({
   submitLabel,
   onSaved,
   onCancel,
+  onDelete,
 }: {
   mode: "create" | "edit"
   caseId?: number
@@ -156,6 +157,7 @@ export function CaseForm({
   submitLabel?: string
   onSaved?: (values: CaseFormValues) => void
   onCancel?: () => void
+  onDelete?: () => void
 }) {
   const csv = useCsvCatalog()
   const [errorCodes, setErrorCodes] = React.useState<ErrorCodeOption[]>([])
@@ -189,7 +191,11 @@ export function CaseForm({
     }
 
     return [...byDepartment.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => {
+        if (a === "PV Bearbeitung") return -1
+        if (b === "PV Bearbeitung") return 1
+        return a.localeCompare(b)
+      })
       .map(([departmentName, codes]) => ({
         departmentName,
         codes: codes.sort((a, b) => a.code - b.code),
@@ -750,7 +756,16 @@ export function CaseForm({
             <div />
           )}
 
-          <Button type="submit">{submitLabel ?? (mode === "edit" ? "Speichern" : "Fall erfassen")}</Button>
+          <div className="flex items-center gap-2">
+            {mode === "edit" && onDelete ? (
+              <Button type="button" variant="outline" onClick={onDelete}>
+                Löschen
+              </Button>
+            ) : null}
+            <Button type="submit">
+              {submitLabel ?? (mode === "edit" ? "Speichern" : "Fall erfassen")}
+            </Button>
+          </div>
         </Field>
       </FieldGroup>
     </form>

@@ -9,7 +9,13 @@ import { Button } from "@/components/ui/button"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-function ShellFrame({ children }: { children: React.ReactNode }) {
+function ShellFrame({
+  children,
+  isAdmin,
+}: {
+  children: React.ReactNode
+  isAdmin: boolean
+}) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const { loadFile } = useCsvCatalog()
 
@@ -23,38 +29,45 @@ function ShellFrame({ children }: { children: React.ReactNode }) {
               <SidebarTrigger />
             </div>
             <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,text/csv"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.currentTarget.files?.[0]
-                  if (!file) return
-                  await loadFile(file)
-                  // allow uploading same file again
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = ""
-                  }
-                }}
-              />
+              {isAdmin ? (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.currentTarget.files?.[0]
+                      if (!file) return
+                      await loadFile(file)
+                      if (fileInputRef.current) fileInputRef.current.value = ""
+                    }}
+                  />
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="CSV hochladen"
-                  >
-                    <UploadIcon />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="end">
-                  CSV hochladen
-                </TooltipContent>
-              </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => fileInputRef.current?.click()}
+                        aria-label="CSV hochladen"
+                      >
+                        <UploadIcon />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="end">
+                      CSV hochladen
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <form action="/api/auth/logout" method="post">
+                    <Button type="submit" variant="outline">
+                      Logout
+                    </Button>
+                  </form>
+                </>
+              ) : null}
             </div>
           </div>
           <main className="flex flex-1 flex-col p-4">{children}</main>
@@ -64,10 +77,16 @@ function ShellFrame({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function ShellClient({ children }: { children: React.ReactNode }) {
+export function ShellClient({
+  children,
+  isAdmin,
+}: {
+  children: React.ReactNode
+  isAdmin: boolean
+}) {
   return (
     <CsvCatalogProvider>
-      <ShellFrame>{children}</ShellFrame>
+      <ShellFrame isAdmin={isAdmin}>{children}</ShellFrame>
     </CsvCatalogProvider>
   )
 }

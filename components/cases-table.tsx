@@ -9,7 +9,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
-import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
 import { CaseForm } from "@/components/case-form"
@@ -154,13 +154,14 @@ export function CasesTable() {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon-sm"
+            aria-label="Fall löschen"
             onClick={(e) => {
               e.stopPropagation()
               setDeleteTarget(row.original)
             }}
           >
-            Löschen
+            <Trash2Icon />
           </Button>
         ),
       },
@@ -290,20 +291,12 @@ export function CasesTable() {
                   erfasser: selected.erfasser,
                 }}
                 onCancel={() => setEditOpen(false)}
+                onDelete={() => setDeleteTarget(selected)}
                 onSaved={async () => {
                   await load()
                   setEditOpen(false)
                 }}
               />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDeleteTarget(selected)}
-                >
-                  Löschen
-                </Button>
-              </div>
             </div>
           ) : null}
         </DialogContent>
