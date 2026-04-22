@@ -92,6 +92,36 @@ function distinct(values: string[]) {
   return [...new Set(values.filter(Boolean))]
 }
 
+function baseKundenauftrag(value: string) {
+  return value.split(".")[0]?.trim() ?? ""
+}
+
+function pickBestKundenauftrag(rows: CsvRow[]) {
+  const counts = new Map<string, number>()
+  const order: string[] = []
+
+  for (const row of rows) {
+    const key = baseKundenauftrag(row.kundenauftrag)
+    if (!key) continue
+    if (!counts.has(key)) {
+      order.push(key)
+    }
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+
+  let best = ""
+  let bestCount = -1
+  for (const key of order) {
+    const count = counts.get(key) ?? 0
+    if (count > bestCount) {
+      best = key
+      bestCount = count
+    }
+  }
+
+  return best
+}
+
 function buildMaterialOptions(rows: CsvRow[]) {
   const byMaterial = new Map<string, Set<string>>()
   for (const r of rows) {
@@ -211,14 +241,23 @@ export function CaseForm({
         return
       }
 
-      const materialOptions = buildMaterialOptions(rows)
+      const matchedKundenauftrag =
+        source === "fauf" ? pickBestKundenauftrag(rows) : ""
+      const materialRows =
+        source === "fauf" && matchedKundenauftrag
+          ? rows.filter(
+              (row) => baseKundenauftrag(row.kundenauftrag) === matchedKundenauftrag
+            )
+          : rows
+
+      const materialOptions = buildMaterialOptions(materialRows)
       const uniqueFauf = distinct(rows.map((r) => r.fauf))
       const uniqueKa = distinct(rows.map((r) => r.kundenauftrag))
 
       isAutoFillingRef.current = true
 
-      if (source === "fauf" && uniqueKa.length === 1) {
-        form.setValue("kundenauftrag", uniqueKa[0]!, {
+      if (source === "fauf") {
+        form.setValue("kundenauftrag", matchedKundenauftrag || uniqueKa[0] || "", {
           shouldValidate: shouldValidateRef.current,
         })
       }
@@ -267,13 +306,6 @@ export function CaseForm({
               "Es wurden mehrere Formate fuer diese Material-Nr gefunden. Erstes Format wurde gesetzt.",
           })
         }
-      }
-
-      if (source === "fauf" && uniqueKa.length !== 1) {
-        toast.warning("Mehrdeutige Zuordnung", {
-          description:
-            "Mehrere Kundenauftraege gefunden. Bitte Kundenauftrag pruefen.",
-        })
       }
       if (source === "kundenauftrag" && uniqueFauf.length !== 1) {
         toast.warning("Mehrdeutige Zuordnung", {
