@@ -428,6 +428,7 @@ export function CaseForm({
     if (mode === "edit") {
       toast.success("Fall aktualisiert")
     }
+    window.dispatchEvent(new Event("cases:changed"))
     onSaved?.(values)
     return true
   }

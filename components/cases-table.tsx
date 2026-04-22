@@ -13,6 +13,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  RotateCcwIcon,
   Trash2Icon,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -154,6 +155,26 @@ export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
         row.id === caseId ? { ...row, readAt: row.readAt ?? new Date().toISOString() } : row
       )
     )
+    window.dispatchEvent(new Event("cases:changed"))
+    return true
+  }, [])
+
+  const markUnread = React.useCallback(async (caseId: number) => {
+    const res = await fetch(`/api/cases/${caseId}/read`, { method: "DELETE" })
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as
+        | { error?: string; message?: string }
+        | null
+      toast.error(
+        json?.message ?? json?.error ?? "Fall konnte nicht als ungelesen markiert werden."
+      )
+      return false
+    }
+
+    setRows((current) =>
+      current.map((row) => (row.id === caseId ? { ...row, readAt: null } : row))
+    )
+    window.dispatchEvent(new Event("cases:changed"))
     return true
   }, [])
 
@@ -170,6 +191,7 @@ export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
 
       toast.success("Fall gelöscht")
       await load()
+      window.dispatchEvent(new Event("cases:changed"))
       return true
     },
     [load]
@@ -188,16 +210,21 @@ export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Fall als gelesen markieren"
-              disabled={row.original.readAt != null}
+              aria-label={
+                row.original.readAt == null
+                  ? "Fall als gelesen markieren"
+                  : "Fall als ungelesen markieren"
+              }
               onClick={(e) => {
                 e.stopPropagation()
                 if (row.original.readAt == null) {
                   void markRead(row.original.id)
+                } else {
+                  void markUnread(row.original.id)
                 }
               }}
             >
-              <CheckIcon />
+              {row.original.readAt == null ? <CheckIcon /> : <RotateCcwIcon />}
             </Button>
             <Button
               type="button"
@@ -292,7 +319,7 @@ export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
               key={row.id}
               className={cn(
                 "cursor-pointer border-l-4 border-l-transparent",
-                row.original.readAt == null && "border-l-orange-500 bg-orange-50/60"
+                row.original.readAt == null && "border-l-orange-500"
               )}
               onClick={() => {
                 if (row.original.readAt == null) {
