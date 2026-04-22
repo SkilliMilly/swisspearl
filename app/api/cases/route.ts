@@ -8,12 +8,21 @@ const bodySchema = z.object({
   maschine: z.string().min(1),
   auswahl: z.enum(["Ausschuss", "Q-Problem"]),
   stueckzahl: z.number().int().min(1).optional().nullable(),
+  errorCodeId: z.number().int().positive().optional().nullable(),
   fauf: z.string().min(1),
   kundenauftrag: z.string().min(1),
   materialNr: z.string().min(1),
   format: z.string().min(1),
   kommentar: z.string().optional().nullable(),
   erfasser: z.string().min(1),
+}).superRefine((data, ctx) => {
+  if (data.auswahl === "Ausschuss" && data.errorCodeId == null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["errorCodeId"],
+      message: "Fehlercode ist erforderlich.",
+    })
+  }
 })
 
 export async function GET() {
@@ -21,19 +30,29 @@ export async function GET() {
     const db = await getDb()
     const rows = (await db`
       SELECT
-        id,
-        created_at AS "createdAt",
-        maschine,
-        auswahl,
-        stueckzahl,
-        fauf,
-        kundenauftrag,
-        material_nr AS "materialNr",
-        format,
-        kommentar,
-        erfasser
-      FROM cases
-      ORDER BY created_at DESC
+        c.id,
+        c.created_at AS "createdAt",
+        c.maschine,
+        c.auswahl,
+        c.stueckzahl,
+        c.error_code_id AS "errorCodeId",
+        c.fauf,
+        c.kundenauftrag,
+        c.material_nr AS "materialNr",
+        c.format,
+        c.kommentar,
+        c.erfasser,
+        ec.code AS "errorCode",
+        ec.title AS "errorCodeTitle",
+        d.name AS "errorCodeDepartment",
+        CASE
+          WHEN ec.id IS NULL THEN NULL
+          ELSE d.name || ' · ' || ec.code::text || ' ' || ec.title
+        END AS "errorCodeLabel"
+      FROM cases c
+      LEFT JOIN error_codes ec ON ec.id = c.error_code_id
+      LEFT JOIN departments d ON d.id = ec.department_id
+      ORDER BY c.created_at DESC
       LIMIT 500
     `) as Array<{
       id: number
@@ -41,12 +60,17 @@ export async function GET() {
       maschine: string
       auswahl: "Ausschuss" | "Q-Problem"
       stueckzahl: number | null
+      errorCodeId: number | null
       fauf: string
       kundenauftrag: string
       materialNr: string
       format: string
       kommentar: string | null
       erfasser: string
+      errorCode: number | null
+      errorCodeTitle: string | null
+      errorCodeDepartment: string | null
+      errorCodeLabel: string | null
     }>
 
     return Response.json({ rows })
@@ -74,6 +98,7 @@ export async function POST(request: Request) {
 
     const stueckzahl =
       data.auswahl === "Ausschuss" ? (data.stueckzahl ?? 1) : null
+    const errorCodeId = data.auswahl === "Ausschuss" ? data.errorCodeId ?? null : null
 
     const db = await getDb()
     const rows = (await db`
@@ -82,6 +107,7 @@ export async function POST(request: Request) {
         maschine,
         auswahl,
         stueckzahl,
+        error_code_id,
         fauf,
         kundenauftrag,
         material_nr,
@@ -93,6 +119,7 @@ export async function POST(request: Request) {
         ${data.maschine},
         ${data.auswahl},
         ${stueckzahl},
+        ${errorCodeId},
         ${data.fauf},
         ${data.kundenauftrag},
         ${data.materialNr},

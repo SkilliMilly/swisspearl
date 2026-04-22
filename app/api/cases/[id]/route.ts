@@ -8,12 +8,21 @@ const bodySchema = z.object({
   maschine: z.string().min(1),
   auswahl: z.enum(["Ausschuss", "Q-Problem"]),
   stueckzahl: z.number().int().min(1).optional().nullable(),
+  errorCodeId: z.number().int().positive().optional().nullable(),
   fauf: z.string().min(1),
   kundenauftrag: z.string().min(1),
   materialNr: z.string().min(1),
   format: z.string().min(1),
   kommentar: z.string().optional().nullable(),
   erfasser: z.string().min(1),
+}).superRefine((data, ctx) => {
+  if (data.auswahl === "Ausschuss" && data.errorCodeId == null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["errorCodeId"],
+      message: "Fehlercode ist erforderlich.",
+    })
+  }
 })
 
 export async function PUT(
@@ -36,6 +45,7 @@ export async function PUT(
     const data = parsed.data
     const stueckzahl =
       data.auswahl === "Ausschuss" ? (data.stueckzahl ?? 1) : null
+    const errorCodeId = data.auswahl === "Ausschuss" ? data.errorCodeId ?? null : null
 
     const db = await getDb()
     const rows = (await db`
@@ -44,6 +54,7 @@ export async function PUT(
         maschine = ${data.maschine},
         auswahl = ${data.auswahl},
         stueckzahl = ${stueckzahl},
+        error_code_id = ${errorCodeId},
         fauf = ${data.fauf},
         kundenauftrag = ${data.kundenauftrag},
         material_nr = ${data.materialNr},

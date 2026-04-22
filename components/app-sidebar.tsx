@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardPlusIcon, LayoutDashboardIcon } from "lucide-react"
+import { AlertTriangleIcon, ClipboardPlusIcon, LayoutDashboardIcon } from "lucide-react"
 
 import {
   Sidebar,
@@ -23,6 +23,11 @@ const NAV_ITEMS = [
     href: "/uebersicht",
     label: "Übersicht",
     Icon: LayoutDashboardIcon,
+  },
+  {
+    href: "/fehlercodes",
+    label: "Fehlercodes",
+    Icon: AlertTriangleIcon,
   },
 ] as const
 

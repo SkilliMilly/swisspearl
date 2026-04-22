@@ -14,7 +14,6 @@ type CsvCatalog = {
   loaded: boolean
   rowsCount: number
   findByFauf: (fauf: string) => Promise<CsvRow[]>
-  findByKundenauftrag: (kundenauftrag: string) => Promise<CsvRow[]>
   loadFile: (file: File) => Promise<void>
 }
 
@@ -28,8 +27,7 @@ export function CsvCatalogProvider({
   const [rowsCount, setRowsCount] = React.useState(0)
   const cacheRef = React.useRef<{
     byFauf: Map<string, CsvRow[]>
-    byKundenauftrag: Map<string, CsvRow[]>
-  }>({ byFauf: new Map(), byKundenauftrag: new Map() })
+  }>({ byFauf: new Map() })
 
   React.useEffect(() => {
     let cancelled = false
@@ -64,22 +62,6 @@ export function CsvCatalogProvider({
     return rows
   }, [])
 
-  const findByKundenauftrag = React.useCallback(async (kundenauftrag: string) => {
-    const key = kundenauftrag.trim()
-    if (!key) return []
-    const cached = cacheRef.current.byKundenauftrag.get(key)
-    if (cached) return cached
-
-    const res = await fetch(
-      `/api/csv/lookup?kundenauftrag=${encodeURIComponent(key)}`
-    )
-    if (!res.ok) return []
-    const json = (await res.json()) as { rows?: CsvRow[] }
-    const rows = json.rows ?? []
-    cacheRef.current.byKundenauftrag.set(key, rows)
-    return rows
-  }, [])
-
   const loadFile = React.useCallback(async (file: File) => {
     const body = new FormData()
     body.set("file", file)
@@ -103,7 +85,6 @@ export function CsvCatalogProvider({
     const inserted = json.inserted ?? 0
 
     cacheRef.current.byFauf.clear()
-    cacheRef.current.byKundenauftrag.clear()
     setRowsCount(inserted)
 
     toast.success("CSV geladen", {
@@ -116,10 +97,9 @@ export function CsvCatalogProvider({
       loaded: rowsCount > 0,
       rowsCount,
       findByFauf,
-      findByKundenauftrag,
       loadFile,
     }),
-    [rowsCount, findByFauf, findByKundenauftrag, loadFile]
+    [rowsCount, findByFauf, loadFile]
   )
 
   return (

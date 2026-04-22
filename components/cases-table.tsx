@@ -36,12 +36,17 @@ type CaseRow = {
   maschine: string
   auswahl: "Ausschuss" | "Q-Problem"
   stueckzahl: number | null
+  errorCodeId: number | null
   fauf: string
   kundenauftrag: string
   materialNr: string
   format: string
   kommentar: string | null
   erfasser: string
+  errorCode: number | null
+  errorCodeTitle: string | null
+  errorCodeDepartment: string | null
+  errorCodeLabel: string | null
 }
 
 function formatDate(iso: string) {
@@ -68,6 +73,11 @@ const columns: ColumnDef<CaseRow>[] = [
     accessorKey: "stueckzahl",
     header: "Stück",
     cell: ({ row }) => (row.original.auswahl === "Ausschuss" ? row.original.stueckzahl ?? "" : "-")
+  },
+  {
+    accessorKey: "errorCodeLabel",
+    header: "Fehlercode",
+    cell: ({ row }) => row.original.errorCodeLabel ?? "-",
   },
   { accessorKey: "fauf", header: "FAUF" },
   { accessorKey: "kundenauftrag", header: "Kundenauftrag" },
@@ -222,6 +232,7 @@ export function CasesTable() {
                   selected.auswahl === "Ausschuss"
                     ? selected.stueckzahl ?? 1
                     : undefined,
+                errorCodeId: selected.errorCodeId ?? null,
                 fauf: selected.fauf,
                 kundenauftrag: selected.kundenauftrag,
                 materialNr: selected.materialNr,

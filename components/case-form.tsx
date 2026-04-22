@@ -22,7 +22,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -41,6 +43,14 @@ const AUSWAHL = ["Ausschuss", "Q-Problem"] as const
 
 const maschinenSet = new Set<string>(MASCHINEN)
 
+type ErrorCodeOption = {
+  id: number
+  departmentId: number
+  departmentName: string
+  code: number
+  title: string
+}
+
 const formSchema = z
   .object({
     maschine: z
@@ -57,6 +67,7 @@ const formSchema = z
         message: "Stückzahl muss eine ganze Zahl sein.",
       })
       .optional(),
+    errorCodeId: z.number().int().positive().optional().nullable(),
     fauf: z.string().min(1, "FAUF ist erforderlich."),
     kundenauftrag: z.string().min(1, "Kundenauftrag ist erforderlich."),
     materialNr: z.string().min(1, "Material-Nr ist erforderlich."),
@@ -76,6 +87,14 @@ const formSchema = z
         message: "Stückzahl ist erforderlich.",
       })
     }
+
+    if (data.errorCodeId == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["errorCodeId"],
+        message: "Fehlercode ist erforderlich.",
+      })
+    }
   })
 
 export type CaseFormValues = z.infer<typeof formSchema>
@@ -90,36 +109,6 @@ type LookupState =
 
 function distinct(values: string[]) {
   return [...new Set(values.filter(Boolean))]
-}
-
-function baseKundenauftrag(value: string) {
-  return value.split(".")[0]?.trim() ?? ""
-}
-
-function pickBestKundenauftrag(rows: CsvRow[]) {
-  const counts = new Map<string, number>()
-  const order: string[] = []
-
-  for (const row of rows) {
-    const key = baseKundenauftrag(row.kundenauftrag)
-    if (!key) continue
-    if (!counts.has(key)) {
-      order.push(key)
-    }
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-
-  let best = ""
-  let bestCount = -1
-  for (const key of order) {
-    const count = counts.get(key) ?? 0
-    if (count > bestCount) {
-      best = key
-      bestCount = count
-    }
-  }
-
-  return best
 }
 
 function buildMaterialOptions(rows: CsvRow[]) {
@@ -143,6 +132,7 @@ function defaultValues(): CaseFormValues {
     maschine: "",
     auswahl: "Ausschuss",
     stueckzahl: 1,
+    errorCodeId: null,
     fauf: "",
     kundenauftrag: "",
     materialNr: "",
@@ -168,6 +158,44 @@ export function CaseForm({
   onCancel?: () => void
 }) {
   const csv = useCsvCatalog()
+  const [errorCodes, setErrorCodes] = React.useState<ErrorCodeOption[]>([])
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch("/api/error-codes", { cache: "no-store" })
+        if (!res.ok) return
+        const json = (await res.json()) as { rows?: ErrorCodeOption[] }
+        if (!cancelled) {
+          setErrorCodes(json.rows ?? [])
+        }
+      } catch {
+        // ignore
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const errorCodeGroups = React.useMemo(() => {
+    const byDepartment = new Map<string, ErrorCodeOption[]>()
+    for (const row of errorCodes) {
+      const list = byDepartment.get(row.departmentName) ?? []
+      list.push(row)
+      byDepartment.set(row.departmentName, list)
+    }
+
+    return [...byDepartment.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([departmentName, codes]) => ({
+        departmentName,
+        codes: codes.sort((a, b) => a.code - b.code),
+      }))
+  }, [errorCodes])
+
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -193,6 +221,9 @@ export function CaseForm({
       form.setValue("stueckzahl", undefined, {
         shouldValidate: shouldValidateRef.current,
       })
+      form.setValue("errorCodeId", null, {
+        shouldValidate: shouldValidateRef.current,
+      })
       return
     }
 
@@ -213,6 +244,9 @@ export function CaseForm({
     form.setValue("format", "", {
       shouldValidate: shouldValidateRef.current,
     })
+    form.setValue("errorCodeId", null, {
+      shouldValidate: shouldValidateRef.current,
+    })
     isAutoFillingRef.current = false
   }, [form])
 
@@ -229,11 +263,14 @@ export function CaseForm({
     form.setValue("format", "", {
       shouldValidate: shouldValidateRef.current,
     })
+    form.setValue("errorCodeId", null, {
+      shouldValidate: shouldValidateRef.current,
+    })
     isAutoFillingRef.current = false
   }, [form])
 
   const applyLookupRows = React.useCallback(
-    (rows: CsvRow[], source: "fauf" | "kundenauftrag") => {
+    (rows: CsvRow[]) => {
       if (!rows.length) {
         setLookup({ status: "idle" })
         clearAutoFields()
@@ -241,27 +278,18 @@ export function CaseForm({
         return
       }
 
-      const matchedKundenauftrag =
-        source === "fauf" ? pickBestKundenauftrag(rows) : ""
-      const materialRows =
-        source === "fauf" && matchedKundenauftrag
-          ? rows.filter(
-              (row) => baseKundenauftrag(row.kundenauftrag) === matchedKundenauftrag
-            )
-          : rows
-
-      const materialOptions = buildMaterialOptions(materialRows)
+      const materialOptions = buildMaterialOptions(rows)
       const uniqueFauf = distinct(rows.map((r) => r.fauf))
       const uniqueKa = distinct(rows.map((r) => r.kundenauftrag))
 
       isAutoFillingRef.current = true
 
-      if (source === "fauf") {
-        form.setValue("kundenauftrag", matchedKundenauftrag || uniqueKa[0] || "", {
+      if (uniqueKa.length === 1) {
+        form.setValue("kundenauftrag", uniqueKa[0]!, {
           shouldValidate: shouldValidateRef.current,
         })
       }
-      if (source === "kundenauftrag" && uniqueFauf.length === 1) {
+      if (uniqueFauf.length === 1) {
         form.setValue("fauf", uniqueFauf[0]!, {
           shouldValidate: shouldValidateRef.current,
         })
@@ -307,11 +335,6 @@ export function CaseForm({
           })
         }
       }
-      if (source === "kundenauftrag" && uniqueFauf.length !== 1) {
-        toast.warning("Mehrdeutige Zuordnung", {
-          description: "Mehrere FAUF gefunden. Bitte FAUF pruefen.",
-        })
-      }
     },
     [clearAutoFields, form]
   )
@@ -330,26 +353,7 @@ export function CaseForm({
       }
 
       const rows = await csv.findByFauf(key)
-      applyLookupRows(rows, "fauf")
-    },
-    [applyLookupRows, clearAllFromKeyDelete, csv]
-  )
-
-  const lookupByKundenauftrag = React.useCallback(
-    async (raw: string) => {
-      const key = raw.trim()
-      if (!key) {
-        clearAllFromKeyDelete()
-        return
-      }
-
-      if (!csv.loaded) {
-        toast.error("Bitte zuerst CSV hochladen.")
-        return
-      }
-
-      const rows = await csv.findByKundenauftrag(key)
-      applyLookupRows(rows, "kundenauftrag")
+      applyLookupRows(rows)
     },
     [applyLookupRows, clearAllFromKeyDelete, csv]
   )
@@ -366,7 +370,7 @@ export function CaseForm({
       const rows = await csv.findByFauf(currentFauf)
       if (cancelled) return
       if (rows.length) {
-        applyLookupRows(rows, "fauf")
+        applyLookupRows(rows)
       }
     })()
 
@@ -380,6 +384,8 @@ export function CaseForm({
       maschine: values.maschine,
       auswahl: values.auswahl,
       stueckzahl: values.auswahl === "Ausschuss" ? values.stueckzahl ?? 1 : null,
+      errorCodeId:
+        values.auswahl === "Ausschuss" ? values.errorCodeId ?? null : null,
       fauf: values.fauf,
       kundenauftrag: values.kundenauftrag,
       materialNr: values.materialNr,
@@ -464,7 +470,7 @@ export function CaseForm({
           )}
         />
 
-        <FieldGroup className="grid gap-4 md:grid-cols-2">
+        <FieldGroup className="grid gap-4 md:grid-cols-3">
           <Controller
             name="auswahl"
             control={form.control}
@@ -512,6 +518,48 @@ export function CaseForm({
                       field.onChange(e.currentTarget.valueAsNumber)
                     }}
                   />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+          ) : (
+            <div />
+          )}
+
+          {auswahl === "Ausschuss" ? (
+            <Controller
+              name="errorCodeId"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="case-form-error-code">
+                    Fehlercode
+                  </FieldLabel>
+                  <Select
+                    value={field.value == null ? "" : String(field.value)}
+                    onValueChange={(value) => {
+                      field.onChange(value ? Number(value) : null)
+                    }}
+                  >
+                    <SelectTrigger
+                      id="case-form-error-code"
+                      aria-invalid={fieldState.invalid}
+                    >
+                      <SelectValue placeholder="Fehlercode auswählen" />
+                    </SelectTrigger>
+                    <SelectContent position="item-aligned">
+                      {errorCodeGroups.map((group) => (
+                        <SelectGroup key={group.departmentName}>
+                          <SelectLabel>{group.departmentName}</SelectLabel>
+                          {group.codes.map((code) => (
+                            <SelectItem key={code.id} value={String(code.id)}>
+                              {code.code} {code.title}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
@@ -573,11 +621,6 @@ export function CaseForm({
                     if (e.currentTarget.value.trim() === "") {
                       clearAllFromKeyDelete()
                     }
-                  }}
-                  onBlur={(e) => {
-                    field.onBlur()
-                    if (isAutoFillingRef.current) return
-                    void lookupByKundenauftrag(e.currentTarget.value)
                   }}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter") return
