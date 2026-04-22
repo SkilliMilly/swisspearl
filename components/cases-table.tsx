@@ -314,12 +314,12 @@ export function CasesTable({ unreadOnly = false }: { unreadOnly?: boolean }) {
         ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
+          {table.getRowModel().rows.map((row, index, arr) => (
             <TableRow
               key={row.id}
               className={cn(
                 "cursor-pointer border-l-4 border-l-transparent",
-                row.original.readAt == null && "border-l-orange-500"
+                row.original.readAt == null && index < arr.length - 1 && "border-l-orange-500"
               )}
               onClick={() => {
                 if (row.original.readAt == null) {

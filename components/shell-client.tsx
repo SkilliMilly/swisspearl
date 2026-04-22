@@ -75,7 +75,7 @@ function NotificationsBell() {
       >
         <BellIcon />
         {count > 0 ? (
-          <span className="absolute top-1 right-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+          <span className="absolute top-1 right-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
             {count > 9 ? "9+" : count}
           </span>
         ) : null}
