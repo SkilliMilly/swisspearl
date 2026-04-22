@@ -12,7 +12,15 @@ import {
 import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { CaseForm } from "@/components/case-form"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -66,23 +74,35 @@ const columns: ColumnDef<CaseRow>[] = [
   { accessorKey: "materialNr", header: "Material-Nr" },
   { accessorKey: "format", header: "Format" },
   { accessorKey: "erfasser", header: "Erfasser" },
-  {
-    accessorKey: "kommentar",
-    header: "Kommentar",
-    cell: ({ getValue }) => {
-      const v = String(getValue() ?? "")
-      if (!v) return ""
-      return <span className="max-w-[28rem] truncate">{v}</span>
-    },
-  },
 ]
 
 export function CasesTable() {
   const [rows, setRows] = React.useState<CaseRow[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [selected, setSelected] = React.useState<CaseRow | null>(null)
+  const [editOpen, setEditOpen] = React.useState(false)
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ])
+
+  const load = React.useCallback(async () => {
+    const res = await fetch("/api/cases", { cache: "no-store" })
+    const text = await res.text()
+
+    if (!res.ok) {
+      toast.error("Fälle konnten nicht geladen werden.")
+      setRows([])
+      return
+    }
+
+    if (!text.trim()) {
+      setRows([])
+      return
+    }
+
+    const json = JSON.parse(text) as { rows?: CaseRow[] }
+    setRows(json.rows ?? [])
+  }, [])
 
   const table = useReactTable({
     data: rows,
@@ -97,22 +117,7 @@ export function CasesTable() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/cases", { cache: "no-store" })
-        const text = await res.text()
-
-        if (!res.ok) {
-          toast.error("Fälle konnten nicht geladen werden.")
-          if (!cancelled) setRows([])
-          return
-        }
-
-        if (!text.trim()) {
-          if (!cancelled) setRows([])
-          return
-        }
-
-        const json = JSON.parse(text) as { rows?: CaseRow[] }
-        if (!cancelled) setRows(json.rows ?? [])
+        await load()
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -130,8 +135,9 @@ export function CasesTable() {
   }
 
   return (
-    <Table>
-      <TableHeader>
+    <>
+      <Table>
+        <TableHeader>
         {table.getHeaderGroups().map((hg) => (
           <TableRow key={hg.id}>
             {hg.headers.map((header) => {
@@ -169,18 +175,69 @@ export function CasesTable() {
             })}
           </TableRow>
         ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              className="cursor-pointer"
+              onClick={() => {
+                setSelected(row.original)
+                setEditOpen(true)
+              }}
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open)
+          if (!open) setSelected(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Fall bearbeiten</DialogTitle>
+            <DialogDescription>
+              Änderungen speichern. Autofill funktioniert wie bei "Fall Erfassen".
+            </DialogDescription>
+          </DialogHeader>
+          {selected ? (
+            <CaseForm
+              mode="edit"
+              caseId={selected.id}
+              submitLabel="Speichern"
+              initialValues={{
+                maschine: selected.maschine,
+                auswahl: selected.auswahl,
+                stueckzahl:
+                  selected.auswahl === "Ausschuss"
+                    ? selected.stueckzahl ?? 1
+                    : undefined,
+                fauf: selected.fauf,
+                kundenauftrag: selected.kundenauftrag,
+                materialNr: selected.materialNr,
+                format: selected.format,
+                kommentar: selected.kommentar ?? "",
+                erfasser: selected.erfasser,
+              }}
+              onCancel={() => setEditOpen(false)}
+              onSaved={async () => {
+                await load()
+                setEditOpen(false)
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

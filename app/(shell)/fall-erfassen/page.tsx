@@ -47,12 +47,16 @@ const MASCHINEN = [
 
 const AUSWAHL = ["Ausschuss", "Q-Problem"] as const
 
+const maschinenSet = new Set<string>(MASCHINEN)
+
 const formSchema = z
   .object({
     maschine: z
-      .enum(MASCHINEN)
-      .optional()
-      .refine((v) => v != null, { message: "Maschine ist erforderlich." }),
+      .string()
+      .min(1, "Maschine ist erforderlich.")
+      .refine((v) => maschinenSet.has(v), {
+        message: "Maschine ist erforderlich.",
+      }),
     auswahl: z.enum(AUSWAHL),
     stueckzahl: z
       .number()
@@ -117,7 +121,7 @@ export default function FallErfassenPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      maschine: undefined,
+      maschine: "",
       auswahl: "Ausschuss",
       stueckzahl: 1,
       fauf: "",
@@ -302,7 +306,12 @@ export default function FallErfassenPage() {
     })
 
     if (!res.ok) {
-      toast.error("Fall konnte nicht gespeichert werden.")
+      const json = (await res.json().catch(() => null)) as
+        | { error?: string; message?: string }
+        | null
+      toast.error("Fall konnte nicht gespeichert werden.", {
+        description: json?.message ?? json?.error,
+      })
       return
     }
 
@@ -311,7 +320,7 @@ export default function FallErfassenPage() {
     })
 
     form.reset({
-      maschine: undefined,
+      maschine: "",
       auswahl: "Ausschuss",
       stueckzahl: 1,
       fauf: "",
@@ -347,7 +356,7 @@ export default function FallErfassenPage() {
                   <FieldLegend>Maschine</FieldLegend>
                   <RadioGroup
                     name={field.name}
-                    value={field.value ?? ""}
+                    value={field.value}
                     onValueChange={(v) => field.onChange(v)}
                     className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
                   >
