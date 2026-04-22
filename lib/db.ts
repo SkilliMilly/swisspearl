@@ -21,6 +21,23 @@ function initDb(db: Db) {
     CREATE INDEX IF NOT EXISTS idx_csv_catalog_fauf ON csv_catalog (fauf);
     CREATE INDEX IF NOT EXISTS idx_csv_catalog_kundenauftrag ON csv_catalog (kundenauftrag);
     CREATE INDEX IF NOT EXISTS idx_csv_catalog_material ON csv_catalog (material_nr);
+
+    CREATE TABLE IF NOT EXISTS cases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL,
+      maschine TEXT NOT NULL,
+      auswahl TEXT NOT NULL,
+      stueckzahl INTEGER,
+      fauf TEXT NOT NULL,
+      kundenauftrag TEXT NOT NULL,
+      material_nr TEXT NOT NULL,
+      format TEXT NOT NULL,
+      kommentar TEXT,
+      erfasser TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases (created_at);
+    CREATE INDEX IF NOT EXISTS idx_cases_fauf ON cases (fauf);
+    CREATE INDEX IF NOT EXISTS idx_cases_kundenauftrag ON cases (kundenauftrag);
   `)
 }
 

@@ -20,11 +20,6 @@ type CsvCatalog = {
 
 const CsvCatalogContext = React.createContext<CsvCatalog | null>(null)
 
-function normalizeKey(value: unknown) {
-  if (typeof value !== "string") return ""
-  return value.trim()
-}
-
 export function CsvCatalogProvider({
   children,
 }: {

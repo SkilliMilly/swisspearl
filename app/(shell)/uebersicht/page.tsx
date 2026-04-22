@@ -1,3 +1,4 @@
+import { CasesTable } from "@/components/cases-table"
 import {
   Card,
   CardContent,
@@ -11,12 +12,10 @@ export default function UebersichtPage() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>Übersicht</CardTitle>
-        <CardDescription>Noch keine Daten angebunden.</CardDescription>
+        <CardDescription>Erfasste Fälle.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">
-          Diese Seite ist aktuell ein Platzhalter.
-        </p>
+        <CasesTable />
       </CardContent>
     </Card>
   )

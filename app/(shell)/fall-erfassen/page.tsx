@@ -47,19 +47,40 @@ const MASCHINEN = [
 
 const AUSWAHL = ["Ausschuss", "Q-Problem"] as const
 
-const formSchema = z.object({
-  maschine: z
-    .enum(MASCHINEN)
-    .optional()
-    .refine((v) => v != null, { message: "Maschine ist erforderlich." }),
-  auswahl: z.enum(AUSWAHL),
-  fauf: z.string().min(1, "FAUF ist erforderlich."),
-  kundenauftrag: z.string().min(1, "Kundenauftrag ist erforderlich."),
-  materialNr: z.string().min(1, "Material-Nr ist erforderlich."),
-  format: z.string().min(1, "Format ist erforderlich."),
-  kommentar: z.string().optional(),
-  erfasser: z.string().min(1, "Erfasser ist erforderlich."),
-})
+const formSchema = z
+  .object({
+    maschine: z
+      .enum(MASCHINEN)
+      .optional()
+      .refine((v) => v != null, { message: "Maschine ist erforderlich." }),
+    auswahl: z.enum(AUSWAHL),
+    stueckzahl: z
+      .number()
+      .min(1, "Stückzahl darf nicht kleiner als 1 sein.")
+      .refine((v) => Number.isInteger(v), {
+        message: "Stückzahl muss eine ganze Zahl sein.",
+      })
+      .optional(),
+    fauf: z.string().min(1, "FAUF ist erforderlich."),
+    kundenauftrag: z.string().min(1, "Kundenauftrag ist erforderlich."),
+    materialNr: z.string().min(1, "Material-Nr ist erforderlich."),
+    format: z.string().min(1, "Format ist erforderlich."),
+    kommentar: z.string().optional(),
+    erfasser: z.string().min(1, "Erfasser ist erforderlich."),
+  })
+  .superRefine((data, ctx) => {
+    if (data.auswahl !== "Ausschuss") {
+      return
+    }
+
+    if (data.stueckzahl == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["stueckzahl"],
+        message: "Stückzahl ist erforderlich.",
+      })
+    }
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
@@ -98,6 +119,7 @@ export default function FallErfassenPage() {
     defaultValues: {
       maschine: undefined,
       auswahl: "Ausschuss",
+      stueckzahl: 1,
       fauf: "",
       kundenauftrag: "",
       materialNr: "",
@@ -107,6 +129,8 @@ export default function FallErfassenPage() {
     },
   })
 
+  const auswahl = form.watch("auswahl")
+
   const [lookup, setLookup] = React.useState<LookupState>({ status: "idle" })
   const isAutoFillingRef = React.useRef(false)
   const shouldValidateRef = React.useRef(false)
@@ -114,6 +138,24 @@ export default function FallErfassenPage() {
   React.useEffect(() => {
     shouldValidateRef.current = form.formState.submitCount > 0
   }, [form.formState.submitCount])
+
+  React.useEffect(() => {
+    if (isAutoFillingRef.current) return
+
+    if (auswahl === "Q-Problem") {
+      form.setValue("stueckzahl", undefined, {
+        shouldValidate: shouldValidateRef.current,
+      })
+      return
+    }
+
+    const current = form.getValues("stueckzahl")
+    if (current == null) {
+      form.setValue("stueckzahl", 1, {
+        shouldValidate: shouldValidateRef.current,
+      })
+    }
+  }, [auswahl, form])
 
   const clearAutoFields = React.useCallback(() => {
     isAutoFillingRef.current = true
@@ -242,13 +284,36 @@ export default function FallErfassenPage() {
     [applyLookupRows, clearAllFromKeyDelete, csv]
   )
 
-  function onSubmit(data: FormValues) {
+  async function onSubmit(data: FormValues) {
+    const res = await fetch("/api/cases", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        maschine: data.maschine,
+        auswahl: data.auswahl,
+        stueckzahl: data.auswahl === "Ausschuss" ? data.stueckzahl ?? 1 : null,
+        fauf: data.fauf,
+        kundenauftrag: data.kundenauftrag,
+        materialNr: data.materialNr,
+        format: data.format,
+        kommentar: data.kommentar ?? null,
+        erfasser: data.erfasser,
+      }),
+    })
+
+    if (!res.ok) {
+      toast.error("Fall konnte nicht gespeichert werden.")
+      return
+    }
+
     toast.success("Fall erfasst", {
       description: `${data.maschine ?? ""} · ${data.auswahl}`,
     })
+
     form.reset({
       maschine: undefined,
       auswahl: "Ausschuss",
+      stueckzahl: 1,
       fauf: "",
       kundenauftrag: "",
       materialNr: "",
@@ -312,30 +377,75 @@ export default function FallErfassenPage() {
               )}
             />
 
-            <Controller
-              name="auswahl"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="fall-erfassen-auswahl">Auswahl</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      id="fall-erfassen-auswahl"
-                      aria-invalid={fieldState.invalid}
+            <FieldGroup className="grid gap-4 md:grid-cols-2">
+              <Controller
+                name="auswahl"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="fall-erfassen-auswahl">Auswahl</FieldLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => {
+                        field.onChange(v)
+                      }}
                     >
-                      <SelectValue placeholder="Auswahl" />
-                    </SelectTrigger>
-                    <SelectContent position="item-aligned">
-                      <SelectItem value="Ausschuss">
-                        Ausschuss (Standard)
-                      </SelectItem>
-                      <SelectItem value="Q-Problem">Q-Problem</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
+                      <SelectTrigger
+                        id="fall-erfassen-auswahl"
+                        aria-invalid={fieldState.invalid}
+                      >
+                        <SelectValue placeholder="Auswahl" />
+                      </SelectTrigger>
+                      <SelectContent position="item-aligned">
+                        <SelectItem value="Ausschuss">
+                          Ausschuss (Standard)
+                        </SelectItem>
+                        <SelectItem value="Q-Problem">Q-Problem</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              {auswahl === "Ausschuss" ? (
+                <Controller
+                  name="stueckzahl"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="fall-erfassen-stueckzahl">
+                        Stückzahl
+                      </FieldLabel>
+                      <Input
+                        id="fall-erfassen-stueckzahl"
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        aria-invalid={fieldState.invalid}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const raw = e.currentTarget.value
+                          if (raw.trim() === "") {
+                            field.onChange(undefined)
+                            return
+                          }
+                          field.onChange(e.currentTarget.valueAsNumber)
+                        }}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              ) : (
+                <div />
               )}
-            />
+            </FieldGroup>
 
             <FieldGroup className="grid gap-4 md:grid-cols-2">
               <Controller
