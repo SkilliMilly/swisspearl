@@ -6,7 +6,7 @@ export const runtime = "nodejs"
 
 const bodySchema = z.object({
   departmentId: z.number().int().positive(),
-  code: z.number().int().positive(),
+  code: z.number().int().positive().nullable().optional(),
   title: z.string().trim().min(1),
 })
 
@@ -47,12 +47,12 @@ export async function GET(request: Request) {
       INNER JOIN departments d ON d.id = ec.department_id
       ORDER BY CASE WHEN d.name = 'PV Bearbeitung' THEN 0 ELSE 1 END, d.name ASC, ec.code ASC
     `) as Array<{
-    id: number
-    departmentId: number
-    departmentName: string
-    code: number
-    title: string
-  }>
+      id: number
+      departmentId: number
+      departmentName: string
+      code: number | null
+      title: string
+    }>
 
   return Response.json({ rows })
 }

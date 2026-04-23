@@ -39,7 +39,7 @@ type ErrorCodeRow = {
   id: number
   departmentId: number
   departmentName: string
-  code: number
+  code: number | null
   title: string
 }
 
@@ -149,7 +149,7 @@ export default function FehlercodesPage() {
   async function saveErrorCode() {
     const body = {
       departmentId: Number(errorCodeForm.departmentId),
-      code: Number(errorCodeForm.code),
+      code: errorCodeForm.code.trim() === "" ? null : Number(errorCodeForm.code),
       title: errorCodeForm.title.trim(),
     }
 
@@ -292,7 +292,7 @@ export default function FehlercodesPage() {
                 {visibleErrorCodes.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{row.code}</TableCell>
+                    <TableCell>{row.code == null ? "—" : row.code}</TableCell>
                     <TableCell>{row.title}</TableCell>
                     <TableCell>
                       <Button
@@ -304,7 +304,7 @@ export default function FehlercodesPage() {
                           setErrorCodeId(row.id)
                           setErrorCodeForm({
                             departmentId: String(row.departmentId),
-                            code: String(row.code),
+                            code: row.code == null ? "" : String(row.code),
                             title: row.title,
                           })
                           setErrorCodeDialogOpen(true)

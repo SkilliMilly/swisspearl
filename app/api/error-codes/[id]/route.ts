@@ -6,7 +6,7 @@ export const runtime = "nodejs"
 
 const bodySchema = z.object({
   departmentId: z.number().int().positive(),
-  code: z.number().int().positive(),
+  code: z.number().int().positive().nullable().optional(),
   title: z.string().trim().min(1),
 })
 

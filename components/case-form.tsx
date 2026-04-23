@@ -47,8 +47,12 @@ type ErrorCodeOption = {
   id: number
   departmentId: number
   departmentName: string
-  code: number
+  code: number | null
   title: string
+}
+
+function formatErrorCodeOption(row: ErrorCodeOption) {
+  return row.code == null ? row.title : `${row.code} ${row.title}`
 }
 
 const formSchema = z
@@ -198,7 +202,12 @@ export function CaseForm({
       })
       .map(([departmentName, codes]) => ({
         departmentName,
-        codes: codes.sort((a, b) => a.code - b.code),
+        codes: codes.sort((a, b) => {
+          if (a.code == null && b.code == null) return a.title.localeCompare(b.title)
+          if (a.code == null) return 1
+          if (b.code == null) return -1
+          return a.code - b.code
+        }),
       }))
   }, [errorCodes])
 
@@ -213,6 +222,9 @@ export function CaseForm({
   const [lookup, setLookup] = React.useState<LookupState>({ status: "idle" })
   const isAutoFillingRef = React.useRef(false)
   const shouldValidateRef = React.useRef(false)
+  const previousAuswahlRef = React.useRef<CaseFormValues["auswahl"]>(
+    form.getValues("auswahl")
+  )
 
   React.useEffect(() => {
     shouldValidateRef.current = form.formState.submitCount > 0
@@ -222,6 +234,9 @@ export function CaseForm({
 
   React.useEffect(() => {
     if (isAutoFillingRef.current) return
+
+    const previousAuswahl = previousAuswahlRef.current
+    previousAuswahlRef.current = auswahl
 
     if (auswahl === "Q-Problem") {
       form.setValue("stueckzahl", undefined, {
@@ -234,7 +249,7 @@ export function CaseForm({
     }
 
     const current = form.getValues("stueckzahl")
-    if (current == null) {
+    if (current == null && previousAuswahl !== "Ausschuss") {
       form.setValue("stueckzahl", 1, {
         shouldValidate: shouldValidateRef.current,
       })
@@ -560,7 +575,7 @@ export function CaseForm({
                           <SelectLabel>{group.departmentName}</SelectLabel>
                           {group.codes.map((code) => (
                             <SelectItem key={code.id} value={String(code.id)}>
-                              {code.code} {code.title}
+                              {formatErrorCodeOption(code)}
                             </SelectItem>
                           ))}
                         </SelectGroup>

@@ -2,7 +2,13 @@ import { neon } from "@neondatabase/serverless"
 
 type Db = ReturnType<typeof neon>
 
-const INITIAL_DEPARTMENTS = ["PV Bearbeitung", "PM2 (Rohplatten)"] as const
+const INITIAL_DEPARTMENTS = [
+  "PV Bearbeitung",
+  "PM2 (Rohplatten)",
+  "BAFS / TA08",
+  "Logistik",
+  "Brandschutz",
+] as const
 
 const INITIAL_ERROR_CODES = [
   { department: "PV Bearbeitung", code: 661, title: "Verschnitt" },
@@ -44,6 +50,89 @@ const INITIAL_ERROR_CODES = [
   { department: "PM2 (Rohplatten)", code: 225, title: "Zu dick" },
   { department: "PM2 (Rohplatten)", code: 226, title: "Blechzentrierung" },
   { department: "PM2 (Rohplatten)", code: 299, title: "Diverses / unbestimmt" },
+  { department: "BAFS / TA08", code: 321, title: "GP / Beulen hoch/tief" },
+  { department: "BAFS / TA08", code: 322, title: "GP / Fasernest / Mädli" },
+  { department: "BAFS / TA08", code: 323, title: "Einschluss / Flecken / Rost" },
+  { department: "BAFS / TA08", code: 324, title: "Grundierung" },
+  { department: "BAFS / TA08", code: 325, title: "Giesstreifen" },
+  { department: "BAFS / TA08", code: 326, title: "Spritzfehler SK1" },
+  {
+    department: "BAFS / TA08",
+    code: 327,
+    title: "Farbqualität  /Luf t/ Fischaugen",
+  },
+  { department: "BAFS / TA08", code: 328, title: "Manipulationsfehler MA" },
+  { department: "BAFS / TA08", code: 329, title: "Fehlerfunktion der Anlage" },
+  { department: "BAFS / TA08", code: 330, title: "Ausschuss wegen TA08" },
+  { department: "BAFS / TA08", code: 331, title: "Ausschuss wegen Sek 5" },
+  { department: "BAFS / TA08", code: 332, title: "Farbe Manipulation MA" },
+  { department: "BAFS / TA08", code: 333, title: "Ausschuss wegen FA" },
+  { department: "BAFS / TA08", code: 334, title: "Risse TA08" },
+  { department: "BAFS / TA08", code: 371, title: "Grundplatte hell" },
+  { department: "BAFS / TA08", code: 372, title: "Grundplatte dunkel" },
+  { department: "BAFS / TA08", code: 373, title: "Saugerabdrücke" },
+  { department: "BAFS / TA08", code: 374, title: "Blechkleber" },
+  { department: "BAFS / TA08", code: 377, title: "Blechdruck längs / quer" },
+  { department: "BAFS / TA08", code: 380, title: "Wasserflecken" },
+  { department: "BAFS / TA08", code: 382, title: "Steifen längs / quer" },
+  { department: "BAFS / TA08", code: 383, title: "Risse" },
+  { department: "BAFS / TA08", code: 399, title: "Diverse" },
+  { department: "Logistik", code: 791, title: "Lagerbruch" },
+  { department: "Logistik", code: 792, title: "Staplerbeschädigung Logistik" },
+  { department: "Logistik", code: 793, title: "Staplerbeschädigung Produktion" },
+  { department: "Logistik", code: 794, title: "Fehllagerung" },
+  { department: "Logistik", code: 795, title: "Handling Logistik" },
+  { department: "Brandschutz", code: null, title: "Risse" },
+  { department: "Brandschutz", code: null, title: "Zementflecken" },
+  { department: "Brandschutz", code: null, title: "Verfärbung in Oberfläche" },
+  { department: "Brandschutz", code: null, title: "Kantenbeschädigung" },
+  { department: "Brandschutz", code: null, title: "Kratzer" },
+  { department: "Brandschutz", code: null, title: "Fingerabdrücke" },
+  { department: "Brandschutz", code: null, title: "Flecken" },
+  { department: "Brandschutz", code: null, title: "Markierungen" },
+  { department: "Brandschutz", code: null, title: "Platten krumm" },
+  { department: "Brandschutz", code: null, title: "Verschmutzung" },
+  { department: "Brandschutz", code: null, title: "Saugerabdrücke" },
+  {
+    department: "Brandschutz",
+    code: null,
+    title: "Pical, Sasmo: Oberfläche weist Schwellen",
+  },
+  {
+    department: "Brandschutz",
+    code: null,
+    title: "Pical, Sasmo: Blasenbildung im Belag",
+  },
+  {
+    department: "Brandschutz",
+    code: null,
+    title: "Pical, Sasmo: Vertiefungen im Belag",
+  },
+  {
+    department: "Brandschutz",
+    code: null,
+    title: "Pical, Sasmo: Ablösen des Belags",
+  },
+  { department: "Brandschutz", code: null, title: "Allgemein / Diveses" },
+  { department: "Ondapress", code: null, title: "Blechfehler" },
+  { department: "Ondapress", code: null, title: "Kratzer" },
+  { department: "Ondapress", code: null, title: "Ausgerissene Oberfläche" },
+  {
+    department: "Ondapress",
+    code: null,
+    title: "Fremdkörper in der Rohplatte (Einschluss)",
+  },
+  { department: "Ondapress", code: null, title: "Fremdkörper auf der Oberfläche" },
+  { department: "Ondapress", code: null, title: "Delamination" },
+  { department: "Ondapress", code: null, title: "Ausblühung (Effloreszenz)" },
+  { department: "Ondapress", code: null, title: "Beschichtungsfehler" },
+  { department: "Ondapress", code: null, title: "Glanzstellen" },
+  { department: "Ondapress", code: null, title: "Verschmutzung" },
+  { department: "Ondapress", code: null, title: "Wasserflecken" },
+  { department: "Ondapress", code: null, title: "Fett-/Ölflecken" },
+  { department: "Ondapress", code: null, title: "Risse" },
+  { department: "Ondapress", code: null, title: "Beschädigungen" },
+  { department: "Ondapress", code: null, title: "Allgemein / Diveses" },
 ] as const
 
 declare global {
@@ -110,28 +199,34 @@ function ensureSchema() {
         CREATE TABLE IF NOT EXISTS error_codes (
           id SERIAL PRIMARY KEY,
           department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
-          code INTEGER NOT NULL,
+          code INTEGER,
           title TEXT NOT NULL
         )
       `
-      await db`CREATE UNIQUE INDEX IF NOT EXISTS idx_error_codes_department_code ON error_codes (department_id, code)`
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS idx_error_codes_department_code ON error_codes (department_id, code) WHERE code IS NOT NULL`
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS idx_error_codes_department_title_null ON error_codes (department_id, title) WHERE code IS NULL`
       await db`ALTER TABLE cases ADD COLUMN IF NOT EXISTS error_code_id INTEGER REFERENCES error_codes(id)`
 
-      const deptCount = await db`SELECT COUNT(*)::int AS count FROM departments`
-      if ((deptCount as Array<{ count: number }>)[0]?.count === 0) {
-        for (const department of INITIAL_DEPARTMENTS) {
-          await db`INSERT INTO departments (name) VALUES (${department}) ON CONFLICT (name) DO NOTHING`
-        }
+      for (const department of INITIAL_DEPARTMENTS) {
+        await db`INSERT INTO departments (name) VALUES (${department}) ON CONFLICT (name) DO NOTHING`
+      }
 
-        for (const item of INITIAL_ERROR_CODES) {
-          await db`
-            INSERT INTO error_codes (department_id, code, title)
-            SELECT id, ${item.code}, ${item.title}
-            FROM departments
-            WHERE name = ${item.department}
-            ON CONFLICT (department_id, code) DO NOTHING
-          `
-        }
+      for (const item of INITIAL_ERROR_CODES) {
+        await db`
+          INSERT INTO error_codes (department_id, code, title)
+          SELECT id, ${item.code}, ${item.title}
+          FROM departments
+          WHERE name = ${item.department}
+            AND NOT EXISTS (
+              SELECT 1
+              FROM error_codes ec
+              WHERE ec.department_id = departments.id
+                AND (
+                  (${item.code} IS NOT NULL AND ec.code = ${item.code})
+                  OR (${item.code} IS NULL AND ec.code IS NULL AND ec.title = ${item.title})
+                )
+            )
+        `
       }
     })().catch((error) => {
       global.__swisspearlSchemaReady = undefined
